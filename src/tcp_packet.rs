@@ -132,6 +132,8 @@ pub fn string_to_packets(message: String) -> Vec<TcpPacket> {
             data: packet_data.to_vec(),
         });
     }
+
+    packets.last_mut().unwrap().flag_finished = true; // last packet
     
     packets
 }

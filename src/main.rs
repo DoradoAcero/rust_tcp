@@ -1,9 +1,13 @@
-use std::{net::UdpSocket, thread, time::Duration};
+use std::{net::UdpSocket, thread, time::Duration, io::Result};
 
-use tcp_packet::{string_to_packets, TcpPacket, MAX_PACKET_LENGTH};
+use client::send_message;
+use tcp_packet::{TcpPacket, MAX_PACKET_LENGTH};
 mod tcp_packet;
+mod client;
+mod server;
 
-fn main() -> std::io::Result<()>{
+
+fn main() -> Result<()>{
     {
         let server_addr ="127.0.0.1:8000".to_string();
         let client_addr = "127.0.0.1:8001".to_string();
@@ -12,20 +16,13 @@ fn main() -> std::io::Result<()>{
         thread::sleep(Duration::new(0, 500000000));
 
         let socket = UdpSocket::bind(client_addr).expect("couldn't bind to client address");
-        let packets = string_to_packets("test".to_string());
-        for packet in packets {
-            let buf = packet.to_buffer();
-            socket.send_to(&buf, server_addr.clone())?;
-        }
-        let mut buf = [0; MAX_PACKET_LENGTH];
-        socket.recv_from(&mut buf)?;
-        println!("{:?}", TcpPacket::from_buffer(buf));
+        send_message("test".to_string(), socket, &server_addr)?
     }
     Ok(())
 }
 
 fn setup_server(server_addr: String){
-    thread::spawn(move || -> std::io::Result<()> {
+    thread::spawn(move || -> Result<()> {
             {
                 let socket = UdpSocket::bind(server_addr)?;
 
