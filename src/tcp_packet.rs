@@ -7,22 +7,22 @@ pub const TCP_WINDOW_LENGTH: u16 = 10; // havent decided on what this should be 
 pub struct TcpPacket {
     // source_port: u16, udp is handling this one for me
     // destination_port: u16, and this one
-    sequence_number: u32,
-    ack_number: u32,
-    data_offset: u8, //actually a u4, but this doesn't exist in rust
-    flag_congestion_window_reduced: bool, //not gonna do this one
-    flag_echo_explicit_congestion_notification: bool, //or this
-    flag_urgent_pointer: bool, //TODO this is a maybe, could be fun
-    flag_ack: bool,
-    flag_push: bool,
-    flag_reset: bool,
-    flag_sync_seq_numbers: bool,
-    flag_finished: bool,
-    window: u16,
-    checksum: u16,
-    urgent_pointer: u16,
-    options: Vec<u8>,
-    data: Vec<u8>,
+    pub sequence_number: u32,
+    pub ack_number: u32,
+    pub data_offset: u8, //actually a u4, but this doesn't exist in rust
+    pub flag_congestion_window_reduced: bool, //not gonna do this one
+    pub flag_echo_explicit_congestion_notification: bool, //or this
+    pub flag_urgent_pointer: bool, //TODO this is a maybe, could be fun
+    pub flag_ack: bool,
+    pub flag_push: bool,
+    pub flag_reset: bool,
+    pub flag_sync_seq_numbers: bool,
+    pub flag_finished: bool,
+    pub window: u16,
+    pub checksum: u16,
+    pub urgent_pointer: u16,
+    pub options: Vec<u8>,
+    pub data: Vec<u8>,
 }
 
 use byteorder::{ByteOrder, LittleEndian};
