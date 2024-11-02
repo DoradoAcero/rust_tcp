@@ -1,4 +1,4 @@
-use std::{net::UdpSocket, thread, time::Duration, io::Result};
+use std::{fs, io::Result, net::UdpSocket, thread, time::Duration};
 
 use client::send_message;
 use tcp_packet::{TcpPacket, MAX_PACKET_LENGTH};
@@ -15,8 +15,12 @@ fn main() -> Result<()>{
         // wait for server, 0.5s
         thread::sleep(Duration::new(0, 500000000));
 
+
+        let contents = fs::read_to_string("bee_movie.txt")
+            .expect("Should have been able to read the file");
+
         let socket = UdpSocket::bind(client_addr).expect("couldn't bind to client address");
-        send_message("test".to_string(), socket, &server_addr)?
+        send_message(contents, socket, &server_addr)?
     }
     Ok(())
 }
@@ -29,13 +33,15 @@ fn setup_server(server_addr: String){
                 // Receives a single datagram message on the socket. If `buf` is too small to hold
                 // the message, it will be cut off.
                 let mut buf = [0; MAX_PACKET_LENGTH];
-                let (_, src) = socket.recv_from(&mut buf)?;
 
                 // Redeclare `buf` as slice of the received data and send reverse data back to origin.
-                let packet = TcpPacket::from_buffer(buf);
-                println!("{:?}", packet);
-                let ack_pack = packet.create_ack();
-                socket.send_to(&ack_pack.to_buffer(), &src)?;
+                loop {
+                    let (_, src) = socket.recv_from(&mut buf)?;
+                    let packet = TcpPacket::from_buffer(buf);
+                    // println!("{:?}", packet);
+                    let ack_pack = packet.create_ack();
+                    socket.send_to(&ack_pack.to_buffer(), &src)?;
+                };
             } // the socket is closed here
             Ok(())
         }
