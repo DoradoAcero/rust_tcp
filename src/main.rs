@@ -1,6 +1,6 @@
 use std::{net::UdpSocket, thread, time::Duration};
 
-use tcp_packet::string_to_packets;
+use tcp_packet::{string_to_packets, TcpPacket, MAX_PACKET_LENGTH};
 mod tcp_packet;
 
 fn main() -> std::io::Result<()>{
@@ -17,10 +17,9 @@ fn main() -> std::io::Result<()>{
             let buf = packet.to_buffer();
             socket.send_to(&buf, server_addr.clone())?;
         }
-        // socket.send_to(&[0,1,2,3,4,5,6,7,8,9], server_addr)?;
-        let mut buf = [0; 1000];
+        let mut buf = [0; MAX_PACKET_LENGTH];
         socket.recv_from(&mut buf)?;
-        println!("{:?}", buf);
+        println!("{:?}", TcpPacket::from_buffer(buf));
     }
     Ok(())
 }
@@ -32,14 +31,14 @@ fn setup_server(server_addr: String){
 
                 // Receives a single datagram message on the socket. If `buf` is too small to hold
                 // the message, it will be cut off.
-                let mut buf = [0; 1000];
-                let (amt, src) = socket.recv_from(&mut buf)?;
+                let mut buf = [0; MAX_PACKET_LENGTH];
+                let (_, src) = socket.recv_from(&mut buf)?;
 
                 // Redeclare `buf` as slice of the received data and send reverse data back to origin.
-                println!("{:?}", buf);
-                let buf = &mut buf[..amt];
-                buf.reverse();
-                socket.send_to(buf, &src)?;
+                let packet = TcpPacket::from_buffer(buf);
+                println!("{:?}", packet);
+                let ack_pack = packet.create_ack();
+                socket.send_to(&ack_pack.to_buffer(), &src)?;
             } // the socket is closed here
             Ok(())
         }
