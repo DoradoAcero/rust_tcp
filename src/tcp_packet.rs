@@ -51,9 +51,9 @@ impl TcpPacket {
         let mut sum: u16 = 0;
         for i in 0..buf.len() {
             sum = sum.wrapping_add(if i % 2 == 0 {
-                (buf[i] as u16) << 8
-            } else {
                 buf[i] as u16
+            } else {
+                (buf[i] as u16) << 8
             });
         }
 
@@ -98,7 +98,6 @@ impl TcpPacket {
         };
         buf[9] = control_bits;
         LittleEndian::write_u16(&mut buf[10..], self.window); //10..12
-        LittleEndian::write_u16(&mut buf[12..], self.checksum); // 12..14
         LittleEndian::write_u16(&mut buf[14..], self.urgent_pointer); // 14..16
         let mut i = 16;
         for option in self.options {
@@ -114,12 +113,13 @@ impl TcpPacket {
         let mut sum: u16 = 0;
         for i in 0..buf.len() {
             sum = sum.wrapping_add(if i % 2 == 0 {
-                (buf[i] as u16) << 8
-            } else {
                 buf[i] as u16
+            } else {
+                (buf[i] as u16) << 8
             });
         }
-        buf[12] = !((sum & 0xffff) as u8);
+        let checksum = 0xffff - sum;
+        LittleEndian::write_u16(&mut buf[12..], checksum); // 12..14
 
         buf
     }

@@ -20,8 +20,11 @@ fn main() -> Result<()>{
         let contents = fs::read_to_string("bee_movie.txt")
             .expect("Should have been able to read the file");
 
+        let contents = "test".to_string();
+
         let socket = UdpSocket::bind(client_addr).expect("couldn't bind to client address");
-        send_message(contents, socket, &server_addr)?
+        send_message(contents.clone(), &socket, &server_addr)?;
+        send_message(contents, &socket, &server_addr)?
     }
     Ok(())
 }
@@ -49,7 +52,7 @@ fn setup_server(server_addr: String){
                             message.push_str(&messages[i].clone());
                         }
                         println!("{}", message);
-                        break;
+                        messages.clear();
                     }
 
                     // println!("{:?}", packet);
