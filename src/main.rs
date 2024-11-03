@@ -34,10 +34,22 @@ fn setup_server(server_addr: String){
                 // the message, it will be cut off.
                 let mut buf = [0; MAX_PACKET_LENGTH];
 
+                let mut messages: Vec<String> = vec![];
                 // Redeclare `buf` as slice of the received data and send reverse data back to origin.
                 loop {
                     let (_, src) = socket.recv_from(&mut buf)?;
                     let packet = TcpPacket::from_buffer(buf);
+
+                    if packet.flag_finished {
+                        let mut message = String::new();
+                        for i in 0..messages.len() {
+                            message.push_str(&messages[i].clone());
+                        }
+                        println!("{}", message);
+                        break;
+                    }
+
+                    messages.insert( packet.sequence_number as usize, String::from_utf8(packet.data.clone()).unwrap());
                     // println!("{:?}", packet);
                     let ack_pack = packet.create_ack();
                     socket.send_to(&ack_pack.to_buffer(), &src)?;

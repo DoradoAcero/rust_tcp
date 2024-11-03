@@ -54,9 +54,9 @@ impl TcpPacket {
             flag_urgent_pointer: buf[9] & (1 << 5) != 0,
             flag_ack: buf[9] & (1 << 4) != 0,
             flag_push: buf[9] & (1 << 3) != 0,
-            flag_finished: buf[9] & (1 << 2) != 0,
-            flag_reset: buf[9] & (1 << 1) != 0,
-            flag_sync_seq_numbers: buf[9] & 1 != 0,
+            flag_reset: buf[9] & (1 << 2) != 0,
+            flag_sync_seq_numbers: buf[9] & (1 << 1) != 0,
+            flag_finished: buf[9] & 1 != 0,
             window: LittleEndian::read_u16(&buf[10..]),
             checksum: LittleEndian::read_u16(&buf[12..]), // TODO
             urgent_pointer: LittleEndian::read_u16(&buf[14..]), // leave this as some free space for later
@@ -133,7 +133,8 @@ pub fn string_to_packets(message: String) -> Vec<TcpPacket> {
         });
     }
 
-    packets.last_mut().unwrap().flag_finished = true; // last packet
+    let last_packet = packets.last_mut().unwrap(); // last packet
+    last_packet.flag_finished = true;
     
     packets
 }
