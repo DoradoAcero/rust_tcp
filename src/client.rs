@@ -25,7 +25,7 @@ fn establish_connection(socket: &UdpSocket, addr: &str) -> Result<u32> {
 
         // 2. recieve syn-ack
         let mut buf = [0; MAX_PACKET_LENGTH];
-        socket.recv_from(&mut buf);
+        socket.recv_from(&mut buf)?;
         let syn_ack_pack = TcpPacket::from_buffer(buf)?;
         if syn_ack_pack.ack_number == syn_num + 1 {
             break syn_ack_pack

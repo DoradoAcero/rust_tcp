@@ -1,7 +1,6 @@
 use std::{fs, io::Result, net::UdpSocket, thread::{self, sleep}, time::{Duration, Instant}};
 
 use client::send_message;
-use tcp_packet::{TcpPacket, MAX_PACKET_LENGTH, TCP_WINDOW_LENGTH};
 mod tcp_packet;
 mod client;
 mod server;
@@ -25,7 +24,7 @@ fn main() -> Result<()>{
 
         let socket = UdpSocket::bind(client_addr).expect("couldn't bind to client address");
         let start = Instant::now();
-        for i in 0..send_counts {
+        for _ in 0..send_counts {
             send_message(contents.clone(), &socket, &server_addr)?;
         }
         let time_taken = start.elapsed();

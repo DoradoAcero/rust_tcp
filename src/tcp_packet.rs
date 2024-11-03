@@ -19,7 +19,6 @@ pub struct TcpPacket {
     pub flag_sync_seq_numbers: bool,
     pub flag_finished: bool,
     pub window: u16,
-    pub checksum: u16,
     pub urgent_pointer: u16,
     pub options: Vec<u8>,
     pub data: Vec<u8>,
@@ -74,7 +73,6 @@ impl TcpPacket {
             flag_sync_seq_numbers: buf[9] & (1 << 1) != 0,
             flag_finished: buf[9] & 1 != 0,
             window: LittleEndian::read_u16(&buf[10..]),
-            checksum: LittleEndian::read_u16(&buf[12..]), // TODO
             urgent_pointer: LittleEndian::read_u16(&buf[14..]), // leave this as some free space for later
             options,
             data,
@@ -163,7 +161,6 @@ pub fn string_to_packets(message: String, seq_num: u32) -> Vec<TcpPacket> {
             flag_reset: false,
             flag_sync_seq_numbers: false,
             window: TCP_WINDOW_LENGTH,
-            checksum: 0,       // TODO
             urgent_pointer: 0, // leave this as some free space for later
             options: vec![],   // imma leave options empty for now
             data: packet_data.to_vec(),
@@ -191,7 +188,6 @@ pub fn create_syn_packet() -> TcpPacket {
         flag_sync_seq_numbers: true,
         flag_finished: false,
         window: TCP_WINDOW_LENGTH,
-        checksum: 0,
         urgent_pointer: 0,
         options: vec![],
         data: vec![],

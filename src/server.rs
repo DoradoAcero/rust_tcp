@@ -1,14 +1,6 @@
 use std::{io::Error, net::UdpSocket, thread::{self, sleep}, time::Duration};
 
-use rand::seq;
-
-use crate::{tcp_packet::{TcpPacket, MAX_PACKET_LENGTH, TCP_WINDOW_LENGTH}, unwrap_or_continue};
-
-
-struct ServerState {
-    messages: Vec<String>,
-    window: Vec<u16>,
-}
+use crate::{tcp_packet::{TcpPacket, MAX_PACKET_LENGTH}, unwrap_or_continue};
 
 fn establish_connection(socket: &UdpSocket) -> Result<u32, Error> {
     // 1. recieve syn
