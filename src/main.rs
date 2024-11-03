@@ -39,6 +39,7 @@ fn setup_server(server_addr: String){
                 loop {
                     let (_, src) = socket.recv_from(&mut buf)?;
                     let packet = TcpPacket::from_buffer(buf);
+                    messages.insert( packet.sequence_number as usize, String::from_utf8(packet.data.clone()).unwrap());
 
                     if packet.flag_finished {
                         let mut message = String::new();
@@ -49,7 +50,6 @@ fn setup_server(server_addr: String){
                         break;
                     }
 
-                    messages.insert( packet.sequence_number as usize, String::from_utf8(packet.data.clone()).unwrap());
                     // println!("{:?}", packet);
                     let ack_pack = packet.create_ack();
                     socket.send_to(&ack_pack.to_buffer(), &src)?;
