@@ -25,11 +25,13 @@ pub struct TcpPacket {
     pub data: Vec<u8>,
 }
 
+use std::io::{Error, ErrorKind};
+
 use byteorder::{ByteOrder, LittleEndian};
 
 
 impl TcpPacket {
-    pub fn from_buffer(buf: [u8; MAX_PACKET_LENGTH]) -> TcpPacket {
+    pub fn from_buffer(buf: [u8; MAX_PACKET_LENGTH]) -> Result<TcpPacket, Error> {
         let mut options = vec![];
         let mut data = vec![];
         let data_offset = buf[8];
@@ -45,7 +47,21 @@ impl TcpPacket {
             i += 1;
         }
 
-        TcpPacket {
+        // checksum calculation
+        let mut sum: u16 = 0;
+        for i in 0..buf.len() {
+            sum = sum.wrapping_add(if i % 2 == 0 {
+                (buf[i] as u16) << 8
+            } else {
+                buf[i] as u16
+            });
+        }
+
+        if sum != 0xffff {
+            return Err(Error::new(ErrorKind::InvalidData, "Checksum failed"));
+        }
+
+        Ok(TcpPacket {
             sequence_number: LittleEndian::read_u32(&buf),
             ack_number: LittleEndian::read_u32(&buf[4..]),
             data_offset,
@@ -62,7 +78,7 @@ impl TcpPacket {
             urgent_pointer: LittleEndian::read_u16(&buf[14..]), // leave this as some free space for later
             options,
             data,
-        }       
+        })    
     }
 
     pub fn to_buffer<'a>(self) -> [u8; MAX_PACKET_LENGTH] {
@@ -94,6 +110,16 @@ impl TcpPacket {
             buf[i] = utf8;
             i += 1;
         }
+
+        let mut sum: u16 = 0;
+        for i in 0..buf.len() {
+            sum = sum.wrapping_add(if i % 2 == 0 {
+                (buf[i] as u16) << 8
+            } else {
+                buf[i] as u16
+            });
+        }
+        buf[12] = !((sum & 0xffff) as u8);
 
         buf
     }

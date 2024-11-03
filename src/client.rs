@@ -63,22 +63,27 @@ pub fn send_message(message: String, socket: UdpSocket, addr: &str) -> Result<()
 
         let mut buf = [0; MAX_PACKET_LENGTH];
         socket.recv_from(&mut buf)?;
-        let recieved_packet = TcpPacket::from_buffer(buf);
-        if recieved_packet.flag_ack {
-            println!("Recieved Acknowledgement: {}", recieved_packet.ack_number);
-            let status = send_state.get_mut(recieved_packet.ack_number as usize).unwrap();
-            status.1 = PacketStatus::Acknowledged;
-            let mut window_start = *window.get(0).unwrap();
-            for i in &window {
-                match send_state.get(*i as usize).unwrap().1 {
-                    PacketStatus::Acknowledged => {
-                        window_start = *i + 1;
+        match TcpPacket::from_buffer(buf) {
+            Ok(packet) => {
+                if packet.flag_ack {
+                    println!("Recieved Acknowledgement: {}", packet.ack_number);
+                    let status = send_state.get_mut(packet.ack_number as usize).unwrap();
+                    status.1 = PacketStatus::Acknowledged;
+                    let mut window_start = *window.get(0).unwrap();
+                    for i in &window {
+                        match send_state.get(*i as usize).unwrap().1 {
+                            PacketStatus::Acknowledged => {
+                                window_start = *i + 1;
+                            }
+                            _ => break,
+                        }
                     }
-                    _ => break,
+                    let window_finish = min(window_start + TCP_WINDOW_LENGTH, packets.len() as u16);
+                    window = (window_start..window_finish).into_iter().collect();
                 }
-            }
-            let window_finish = min(window_start + TCP_WINDOW_LENGTH, packets.len() as u16);
-            window = (window_start..window_finish).into_iter().collect();
+            },
+            Err(_) => continue,
         }
+        
     }
 }

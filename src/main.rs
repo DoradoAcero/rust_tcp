@@ -5,6 +5,7 @@ use tcp_packet::{TcpPacket, MAX_PACKET_LENGTH};
 mod tcp_packet;
 mod client;
 mod server;
+mod utils;
 
 
 fn main() -> Result<()>{
@@ -38,7 +39,8 @@ fn setup_server(server_addr: String){
                 // Redeclare `buf` as slice of the received data and send reverse data back to origin.
                 loop {
                     let (_, src) = socket.recv_from(&mut buf)?;
-                    let packet = TcpPacket::from_buffer(buf);
+                    let packet = unwrap_or_continue!(TcpPacket::from_buffer(buf));
+                    
                     messages.insert( packet.sequence_number as usize, String::from_utf8(packet.data.clone()).unwrap());
 
                     if packet.flag_finished {
