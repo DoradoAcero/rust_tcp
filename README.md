@@ -19,3 +19,8 @@ it won't be the full tcp, just a wrapper on udp, so not actually a transport pro
 2. interacting with the IP layer, and actually creating a tcp protocol that all computers can work with
 3. maybe a tui? (later down the line I want to make my own http on this protocol, and then maybe a postman tui clone)
     but that being said, a tui dashboard of acks rolling through, throughput of packets, etc, could be siiiiick
+
+
+Got Something basic working
+it is stuuuupid slow though, only like 89MB/s ~ 719Mb/s
+this should be orders of magnitude faster

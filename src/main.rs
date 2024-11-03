@@ -1,15 +1,16 @@
-use std::{fs, io::Result, net::UdpSocket, thread, time::Duration};
+use std::{fs, io::Result, net::UdpSocket, thread::{self, sleep}, time::{Duration, Instant}};
 
 use client::send_message;
-use tcp_packet::{TcpPacket, MAX_PACKET_LENGTH};
+use tcp_packet::{TcpPacket, MAX_PACKET_LENGTH, TCP_WINDOW_LENGTH};
 mod tcp_packet;
 mod client;
 mod server;
 mod utils;
-
+use server::setup_server;
 
 fn main() -> Result<()>{
     {
+        let send_counts = 3000;
         let server_addr ="127.0.0.1:8000".to_string();
         let client_addr = "127.0.0.1:8001".to_string();
         setup_server(server_addr.clone());
@@ -20,48 +21,17 @@ fn main() -> Result<()>{
         let contents = fs::read_to_string("bee_movie.txt")
             .expect("Should have been able to read the file");
 
+        // let contents = (0..3000).map(|_| "!").collect::<String>(); // just something to make 2 packets
+
         let socket = UdpSocket::bind(client_addr).expect("couldn't bind to client address");
-        send_message(contents, socket, &server_addr)?
+        let start = Instant::now();
+        for i in 0..send_counts {
+            send_message(contents.clone(), &socket, &server_addr)?;
+        }
+        let time_taken = start.elapsed();
+        println!("time taken: {:.2?}: {:.2?}", time_taken, time_taken/send_counts);
+        sleep(Duration::new(1,0)); // let the server finish recieving
     }
     Ok(())
 }
 
-fn setup_server(server_addr: String){
-    thread::spawn(move || -> Result<()> {
-            {
-                let socket = UdpSocket::bind(server_addr)?;
-
-                let mut buf = [0; MAX_PACKET_LENGTH];
-
-                let mut messages: Vec<String> = vec![];
-                let mut fin_flag = false;
-                loop {
-                    let (_, src) = socket.recv_from(&mut buf)?;
-                    let packet = unwrap_or_continue!(TcpPacket::from_buffer(buf));
-                    
-                    messages.resize(packet.sequence_number as usize, "".to_string());
-                    messages.insert( packet.sequence_number as usize, String::from_utf8(packet.data.clone()).unwrap());
-
-                    if packet.flag_finished {
-                        fin_flag = true;
-                    }
-
-                    let ack_pack = packet.create_ack();
-                    socket.send_to(&ack_pack.to_buffer(), &src)?;
-
-                    // if there are no empty packets, and the last message has been recieved
-                    if fin_flag && !messages.contains(&"".to_string()){
-                        let mut message = String::new();
-                        for i in 0..messages.len() {
-                            message.push_str(&messages[i].clone());
-                        }
-                        println!("{}", message);
-                        
-                        fin_flag = false;
-                    };
-
-                };
-            } // the socket is closed here
-        }
-    );
-}

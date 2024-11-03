@@ -1,4 +1,4 @@
-pub const MAX_DATA_LENGTH: usize = 1380;// https://superuser.com/questions/1341012/practical-vs-theoretical-max-limit-of-tcp-packet-size
+pub const MAX_DATA_LENGTH: usize = 1380; // https://superuser.com/questions/1341012/practical-vs-theoretical-max-limit-of-tcp-packet-size
 pub const MAX_PACKET_LENGTH: usize = MAX_DATA_LENGTH + 16; // this is assuming no options
 pub const TCP_WINDOW_LENGTH: u16 = 10; // havent decided on what this should be yet
 
@@ -28,7 +28,7 @@ pub struct TcpPacket {
 use std::io::{Error, ErrorKind};
 
 use byteorder::{ByteOrder, LittleEndian};
-
+use rand::Rng;
 
 impl TcpPacket {
     pub fn from_buffer(buf: [u8; MAX_PACKET_LENGTH]) -> Result<TcpPacket, Error> {
@@ -51,9 +51,9 @@ impl TcpPacket {
         let mut sum: u16 = 0;
         for i in 0..buf.len() {
             sum = sum.wrapping_add(if i % 2 == 0 {
-                (buf[i] as u16) << 8
-            } else {
                 buf[i] as u16
+            } else {
+                (buf[i] as u16) << 8
             });
         }
 
@@ -78,7 +78,7 @@ impl TcpPacket {
             urgent_pointer: LittleEndian::read_u16(&buf[14..]), // leave this as some free space for later
             options,
             data,
-        })    
+        })
     }
 
     pub fn to_buffer<'a>(self) -> [u8; MAX_PACKET_LENGTH] {
@@ -87,18 +87,17 @@ impl TcpPacket {
         LittleEndian::write_u32(&mut buf[4..], self.ack_number); //4..8
         buf[8] = self.data_offset; // + reserved
         let control_bits: u8 = {
-            ((self.flag_congestion_window_reduced as u8) << 7) +
-            ((self.flag_echo_explicit_congestion_notification as u8) << 6) + 
-            ((self.flag_urgent_pointer as u8) << 5) + 
-            ((self.flag_ack as u8) << 4) + 
-            ((self.flag_push as u8) << 3) + 
-            ((self.flag_reset as u8) << 2) + 
-            ((self.flag_sync_seq_numbers as u8) << 1) + 
-            (self.flag_finished as u8) 
+            ((self.flag_congestion_window_reduced as u8) << 7)
+                + ((self.flag_echo_explicit_congestion_notification as u8) << 6)
+                + ((self.flag_urgent_pointer as u8) << 5)
+                + ((self.flag_ack as u8) << 4)
+                + ((self.flag_push as u8) << 3)
+                + ((self.flag_reset as u8) << 2)
+                + ((self.flag_sync_seq_numbers as u8) << 1)
+                + (self.flag_finished as u8)
         };
         buf[9] = control_bits;
         LittleEndian::write_u16(&mut buf[10..], self.window); //10..12
-        LittleEndian::write_u16(&mut buf[12..], self.checksum); // 12..14
         LittleEndian::write_u16(&mut buf[14..], self.urgent_pointer); // 14..16
         let mut i = 16;
         for option in self.options {
@@ -114,12 +113,13 @@ impl TcpPacket {
         let mut sum: u16 = 0;
         for i in 0..buf.len() {
             sum = sum.wrapping_add(if i % 2 == 0 {
-                (buf[i] as u16) << 8
-            } else {
                 buf[i] as u16
+            } else {
+                (buf[i] as u16) << 8
             });
         }
-        buf[12] = !((sum & 0xffff) as u8);
+        let checksum = 0xffff - sum;
+        LittleEndian::write_u16(&mut buf[12..], checksum); // 12..14
 
         buf
     }
@@ -127,20 +127,31 @@ impl TcpPacket {
     pub fn create_ack(self) -> TcpPacket {
         let mut ack_pack = self.clone();
 
-        ack_pack.ack_number = ack_pack.sequence_number;
+        ack_pack.ack_number = ack_pack.sequence_number + 1;
+        ack_pack.flag_sync_seq_numbers = false; // this is for the init ack from the syn-ack
         ack_pack.flag_ack = true;
         ack_pack.data.clear();
 
         ack_pack
     }
+
+    pub fn create_syn_ack(self) -> TcpPacket {
+        let mut rng = rand::thread_rng();
+        let mut ack_pack = self.clone();
+        ack_pack.flag_ack = true;
+        ack_pack.ack_number = ack_pack.sequence_number + 1;
+        ack_pack.sequence_number = rng.gen();
+
+        ack_pack
+    }
 }
 
-
-pub fn string_to_packets(message: String) -> Vec<TcpPacket> {
+pub fn string_to_packets(message: String, seq_num: u32) -> Vec<TcpPacket> {
     let mut packets = vec![];
     for (i, packet_data) in message.as_bytes().chunks(MAX_DATA_LENGTH).enumerate() {
+        let sequence_number = seq_num.wrapping_add(i as u32);
         packets.push(TcpPacket {
-            sequence_number: i as u32,
+            sequence_number,
             ack_number: 0,
             data_offset: 4, // no options for now, starts at 5 as i am missing ports in my protocol
             flag_congestion_window_reduced: false,
@@ -152,15 +163,37 @@ pub fn string_to_packets(message: String) -> Vec<TcpPacket> {
             flag_reset: false,
             flag_sync_seq_numbers: false,
             window: TCP_WINDOW_LENGTH,
-            checksum: 0, // TODO
+            checksum: 0,       // TODO
             urgent_pointer: 0, // leave this as some free space for later
-            options: vec![], // imma leave options empty for now
+            options: vec![],   // imma leave options empty for now
             data: packet_data.to_vec(),
         });
     }
 
     let last_packet = packets.last_mut().unwrap(); // last packet
     last_packet.flag_finished = true;
-    
+
     packets
+}
+
+pub fn create_syn_packet() -> TcpPacket {
+    let mut rng = rand::thread_rng();
+    TcpPacket {
+        sequence_number: rng.gen(),
+        ack_number: 0,
+        data_offset: 4,
+        flag_congestion_window_reduced: false,
+        flag_echo_explicit_congestion_notification: false,
+        flag_urgent_pointer: false,
+        flag_ack: false,
+        flag_push: false,
+        flag_reset: false,
+        flag_sync_seq_numbers: true,
+        flag_finished: false,
+        window: TCP_WINDOW_LENGTH,
+        checksum: 0,
+        urgent_pointer: 0,
+        options: vec![],
+        data: vec![],
+    }
 }
