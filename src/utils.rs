@@ -4,8 +4,8 @@ macro_rules! unwrap_or_continue {
     ( $e:expr ) => {
         match $e {
             Ok(x) => x,
-            Err(_) => {
-                println!("continuing because null");
+            Err(err) => {
+                println!("continuing because null {}", err);
                 continue;
             }
         }

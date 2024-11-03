@@ -1,5 +1,6 @@
-use std::{cmp::{max, min}, io::{Error, ErrorKind, Result}, net::UdpSocket, time::{Duration, Instant}};
+use std::{cmp::{max, min}, io::{Error, ErrorKind, Result}, net::UdpSocket, thread::sleep, time::{Duration, Instant}};
 use rand::Rng;
+use futures::select;
 
 use crate::{main, tcp_packet::{string_to_packets, TcpPacket, MAX_PACKET_LENGTH, TCP_WINDOW_LENGTH}};
 
@@ -14,6 +15,7 @@ fn get_retry_time(retry_count: u32) -> Instant {
 }
 
 pub fn send_message(message: String, socket: UdpSocket, addr: &str) -> Result<()> {
+    socket.set_read_timeout(Some(Duration::new(0, 100000000)))?;
     let packets = string_to_packets(message);
     let mut send_state = vec![];
 
@@ -62,7 +64,16 @@ pub fn send_message(message: String, socket: UdpSocket, addr: &str) -> Result<()
         }
 
         let mut buf = [0; MAX_PACKET_LENGTH];
-        socket.recv_from(&mut buf)?;
+        let socket_result = socket.recv_from(&mut buf);
+        match socket_result {
+            Ok(_) => (),
+            Err(e) => {
+                if e.kind() == ErrorKind::WouldBlock {
+                    continue;
+                }
+                return Err(e);
+            }
+        }
         match TcpPacket::from_buffer(buf) {
             Ok(packet) => {
                 if packet.flag_ack {
