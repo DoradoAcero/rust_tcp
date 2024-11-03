@@ -31,33 +31,37 @@ fn setup_server(server_addr: String){
             {
                 let socket = UdpSocket::bind(server_addr)?;
 
-                // Receives a single datagram message on the socket. If `buf` is too small to hold
-                // the message, it will be cut off.
                 let mut buf = [0; MAX_PACKET_LENGTH];
 
                 let mut messages: Vec<String> = vec![];
-                // Redeclare `buf` as slice of the received data and send reverse data back to origin.
+                let mut fin_flag = false;
                 loop {
                     let (_, src) = socket.recv_from(&mut buf)?;
                     let packet = unwrap_or_continue!(TcpPacket::from_buffer(buf));
                     
+                    messages.resize(packet.sequence_number as usize, "".to_string());
                     messages.insert( packet.sequence_number as usize, String::from_utf8(packet.data.clone()).unwrap());
 
                     if packet.flag_finished {
+                        fin_flag = true;
+                    }
+
+                    let ack_pack = packet.create_ack();
+                    socket.send_to(&ack_pack.to_buffer(), &src)?;
+
+                    // if there are no empty packets, and the last message has been recieved
+                    if fin_flag && !messages.contains(&"".to_string()){
                         let mut message = String::new();
                         for i in 0..messages.len() {
                             message.push_str(&messages[i].clone());
                         }
                         println!("{}", message);
-                        break;
-                    }
+                        
+                        fin_flag = false;
+                    };
 
-                    // println!("{:?}", packet);
-                    let ack_pack = packet.create_ack();
-                    socket.send_to(&ack_pack.to_buffer(), &src)?;
                 };
             } // the socket is closed here
-            Ok(())
         }
     );
 }
