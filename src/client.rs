@@ -61,6 +61,7 @@ pub fn send_message(message: String, socket: &UdpSocket, addr: &str) -> Result<(
                 _ => false
             }
         }) {
+            print!("returning 64");
             return Ok(());
         }
 
@@ -80,6 +81,7 @@ pub fn send_message(message: String, socket: &UdpSocket, addr: &str) -> Result<(
                 // if the packet is sent, check if time is up to send it again
                 PacketStatus::Sent { retry_time, retry_count } => {
                     if *retry_count >= 5 {
+                        print!("returning 84");
                         return Err(Error::new(ErrorKind::ConnectionRefused, "Retry Count Exceeded"));
                     }
                     if *retry_time < Instant::now() {
@@ -104,10 +106,12 @@ pub fn send_message(message: String, socket: &UdpSocket, addr: &str) -> Result<(
                 if e.kind() == ErrorKind::WouldBlock {
                     timeout_count += 1;
                     if timeout_count > 3 {
+                        println!("returning 109");
                         return Err(e);
                     }
                     continue;
                 }
+                println!("returning 114");
                 return Err(e);
             }
         }
@@ -137,6 +141,5 @@ pub fn send_message(message: String, socket: &UdpSocket, addr: &str) -> Result<(
             // the only way the from buffer fails is if the checksum fails, in which case we need another message
             Err(_) => continue,
         }
-        
     }
 }
