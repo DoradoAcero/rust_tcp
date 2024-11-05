@@ -1,4 +1,4 @@
-use std::{cmp::min, io::{Error, ErrorKind, Result}, net::UdpSocket, time::{Duration, Instant}};
+use std::{cmp::min, io::{Error, ErrorKind, Result}, net::UdpSocket, thread::sleep, time::{Duration, Instant}};
 use rand::Rng;
 
 use crate::tcp_packet::{create_syn_packet, string_to_packets, TcpPacket, MAX_PACKET_LENGTH, TCP_WINDOW_LENGTH};
@@ -20,12 +20,25 @@ fn establish_connection(socket: &UdpSocket, addr: &str) -> Result<u32> {
     let send_buf = syn_packet.to_buffer();
 
     // keep sending until we reach max retries
+    let mut retry_count = 0;
     let syn_ack_pack: TcpPacket = loop {
         socket.send_to(&send_buf, addr)?;
 
         // 2. recieve syn-ack
         let mut buf = [0; MAX_PACKET_LENGTH];
-        socket.recv_from(&mut buf)?;
+        let recieve = socket.recv_from(&mut buf);
+        match recieve {
+            Ok(_) => (),
+            Err(e) => {
+                retry_count += 1;
+                if retry_count > 3 {
+                    return Err(Error::new(ErrorKind::TimedOut, "Could not establish connection"));
+                }
+                sleep(get_retry_time(retry_count) - Instant::now());
+                continue;
+            }
+            
+        }
         let syn_ack_pack = TcpPacket::from_buffer(buf)?;
         if syn_ack_pack.ack_number == syn_num + 1 {
             break syn_ack_pack
@@ -39,7 +52,7 @@ fn establish_connection(socket: &UdpSocket, addr: &str) -> Result<u32> {
 }
 
 pub fn send_message(message: String, socket: &UdpSocket, addr: &str) -> Result<()> {
-    socket.set_read_timeout(Some(Duration::new(1, 0)))?;
+    socket.set_read_timeout(Some(Duration::new(0, 200000000)))?;
     let seq_num = establish_connection(socket, addr)?;
     let packets = string_to_packets(message, seq_num);
 
