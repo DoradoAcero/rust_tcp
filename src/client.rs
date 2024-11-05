@@ -50,7 +50,7 @@ pub fn send_message(message: String, socket: &UdpSocket, addr: &str) -> Result<(
         send_state.push((packet.sequence_number, PacketStatus::Unsent))
     }
     let window_finish = min(TCP_WINDOW_LENGTH, packets.len() as u16);
-    let mut window: Vec<u16> = (0..window_finish).into_iter().collect();
+    let mut window: (u16, u16)  = (0, window_finish);
     let mut timeout_count = 0;
 
     loop {
@@ -65,9 +65,9 @@ pub fn send_message(message: String, socket: &UdpSocket, addr: &str) -> Result<(
         }
 
         // send every packet in the window
-        for i in &window {
-            let item = send_state.get_mut(*i as usize).unwrap();
-            let packet = packets.get(*i as usize).unwrap().clone();
+        for i in window.0..window.1 {
+            let item = send_state.get_mut(i as usize).unwrap();
+            let packet = packets.get(i as usize).unwrap().clone();
             match &mut item.1 {
                 // if the packet isn't sent, send it
                 PacketStatus::Unsent => {
@@ -75,7 +75,7 @@ pub fn send_message(message: String, socket: &UdpSocket, addr: &str) -> Result<(
                     let buf = packet.to_buffer();
                     socket.send_to(&buf, addr)?;
 
-                    item.1 = PacketStatus::Sent { retry_time: get_retry_time(1), retry_count: 1 }
+                    item.1 = PacketStatus::Sent { retry_time: get_retry_time(1), retry_count: 1 };
                 },
                 // if the packet is sent, check if time is up to send it again
                 PacketStatus::Sent { retry_time, retry_count } => {
@@ -119,19 +119,19 @@ pub fn send_message(message: String, socket: &UdpSocket, addr: &str) -> Result<(
                     let status = send_state.get_mut(packet_index).unwrap();
                     // set the incoming packet to be ackd
                     status.1 = PacketStatus::Acknowledged;
-                    let mut window_start = *window.get(0).unwrap();
+                    let mut window_start = window.0;
 
                     // find the next unackd packet, and set the window to be the appropriate range
-                    for i in &window {
-                        match send_state.get(*i as usize).unwrap().1 {
+                    for i in window.0..window.1 {
+                        match send_state.get(i as usize).unwrap().1 {
                             PacketStatus::Acknowledged => {
-                                window_start = *i + 1;
+                                window_start = i + 1;
                             }
                             _ => break,
                         }
                     }
                     let window_finish = min(window_start + TCP_WINDOW_LENGTH, packets.len() as u16);
-                    window = (window_start..window_finish).into_iter().collect();
+                    window = (window_start, window_finish);
                 }
             },
             // the only way the from buffer fails is if the checksum fails, in which case we need another message
