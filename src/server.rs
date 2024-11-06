@@ -30,7 +30,7 @@ fn establish_connection(socket: &UdpSocket) -> Result<u32, Error> {
 }
 
 
-pub fn recieve_message(socket: &UdpSocket) -> Result<String, Error> {
+pub fn recieve_message(socket: &UdpSocket) -> Result<(String, String), Error> {
     loop {
         let seq_num = unwrap_or_continue!(establish_connection(&socket));
 
@@ -60,7 +60,7 @@ pub fn recieve_message(socket: &UdpSocket) -> Result<String, Error> {
                     message.push_str(&messages[i].clone());
                 }
                 // println!("{}: {}", message, messages.len());
-                return Ok(message);
+                return Ok((message, src.to_string()));
             };
         };
     } // the socket is closed here
@@ -72,7 +72,7 @@ pub fn setup_server(server_addr: String){
             let server_port = TcpPort::new(&server_addr)?;
 
             loop {
-                let string = server_port.recieve()?;
+                let (string, src) = server_port.recieve()?;
                 println!("{}", string);
             }
         }

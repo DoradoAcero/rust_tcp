@@ -20,7 +20,7 @@ impl TcpPort {
         Ok(())
     }
 
-    pub fn recieve(&self) -> Result<String, Error> {
+    pub fn recieve(&self) -> Result<(String, String), Error> {
         recieve_message(&self.udp_port)
     }
 }

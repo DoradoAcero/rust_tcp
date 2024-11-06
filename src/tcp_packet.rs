@@ -41,7 +41,7 @@ impl TcpPacket {
             i += 1;
         }
 
-        while i < buf.len() {
+        while i < buf.len() && buf[i] != 0 {
             data.push(buf[i]);
             i += 1;
         }
@@ -97,15 +97,15 @@ impl TcpPacket {
         buf[9] = control_bits;
         LittleEndian::write_u16(&mut buf[10..], self.window); //10..12
         LittleEndian::write_u16(&mut buf[14..], self.urgent_pointer); // 14..16
-        let mut i = 16;
+        let mut pointer = 16;
         for option in self.options {
-            buf[i] = option;
-            i += 1;
+            buf[pointer] = option;
+            pointer += 1;
         }
 
         for utf8 in self.data {
-            buf[i] = utf8;
-            i += 1;
+            buf[pointer] = utf8;
+            pointer += 1;
         }
 
         let mut sum: u16 = 0;
