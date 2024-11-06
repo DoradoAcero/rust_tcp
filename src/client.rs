@@ -29,7 +29,7 @@ fn establish_connection(socket: &UdpSocket, addr: &str) -> Result<u32> {
         let recieve = socket.recv_from(&mut buf);
         match recieve {
             Ok(_) => (),
-            Err(e) => {
+            Err(_) => {
                 retry_count += 1;
                 if retry_count > 3 {
                     return Err(Error::new(ErrorKind::TimedOut, "Could not establish connection"));

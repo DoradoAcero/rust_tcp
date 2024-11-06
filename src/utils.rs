@@ -4,7 +4,7 @@ macro_rules! unwrap_or_continue {
     ( $e:expr ) => {
         match $e {
             Ok(x) => x,
-            Err(err) => {
+            Err(_) => {
                 continue;
             }
         }

@@ -1,4 +1,4 @@
-use std::{io::Error, net::UdpSocket, thread::{self, sleep}, time::Duration};
+use std::{io::Error, net::UdpSocket, thread::{self}};
 
 use crate::{port::TcpPort, tcp_packet::{TcpPacket, MAX_PACKET_LENGTH}, unwrap_or_continue};
 
